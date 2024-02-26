@@ -8,8 +8,11 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  Modal,
+  Button,
 } from "react-native";
 import { Fontisto } from "@expo/vector-icons";
+import { EvilIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "./color";
 import { useEffect, useState } from "react";
@@ -19,8 +22,11 @@ const STORAGE_KEY = "@toDos";
 export default function App() {
   const [working, setWorking] = useState(true);
   const [text, setText] = useState("");
+  const [editText, setEditText] = useState("");
   const [todos, setTodos] = useState("");
   const [isChecked, setChecked] = useState(false);
+  const [isModalVisibility, setIsModalVisibility] = useState(false);
+  const [currentKey, setcurrentKey] = useState();
   useEffect(() => {
     loadTodos();
     getCategory();
@@ -35,13 +41,11 @@ export default function App() {
     saveCategory(true);
   };
   const onChangeText = (payload) => setText(payload);
+  const onChangeEditText = (editText) => setEditText(editText);
   const saveTodos = async (toSave) => {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   };
   const loadTodos = async () => {
-    // const s = await AsyncStorage.getItem(STORAGE_KEY);
-    // s !== null ? setTodos(JSON.parse(s)) : null;
-    // console.log(s);
     AsyncStorage.getItem(STORAGE_KEY)
       .then((data) => {
         if (data !== null) {
@@ -91,6 +95,15 @@ export default function App() {
     await saveTodos(updateTodos);
   };
 
+  const modifyTodo = async (index) => {
+    console.log("[modifyTodo] key : ", index);
+    const updateTodos = { ...todos };
+    console.log(editText);
+    updateTodos[index].text = editText;
+    setTodos(updateTodos);
+    await saveTodos(updateTodos);
+  };
+
   const saveCategory = async (working) => {
     await AsyncStorage.setItem("isWorking", JSON.stringify(working));
   };
@@ -98,6 +111,22 @@ export default function App() {
   const getCategory = async () => {
     const s = await AsyncStorage.getItem("isWorking");
     s !== null ? setWorking(JSON.parse(s)) : null;
+  };
+
+  const handleEditButtonPress = (key) => {
+    console.log("[handleEditButtonPress] key : ", key);
+    setcurrentKey(key);
+    setIsModalVisibility(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalVisibility(false);
+  };
+
+  const handleSaveButtonPress = async () => {
+    console.log("[handleSaveButtonPress] key : ", currentKey);
+    await modifyTodo(currentKey);
+    setIsModalVisibility(false);
   };
 
   return (
@@ -146,6 +175,27 @@ export default function App() {
                   color={todos[key].complete ? "red" : undefined}
                 />
               </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleEditButtonPress(key)}>
+                <EvilIcons name="pencil" size={18} color="black" />
+              </TouchableOpacity>
+              {isModalVisibility && (
+                <Modal
+                  visible={isModalVisibility}
+                  animationType="none"
+                  transparent={true}
+                  onRequestClose={handleModalClose}
+                >
+                  <View>
+                    <TextInput
+                      style={styles.input}
+                      returnKeyType="done"
+                      onChangeText={onChangeEditText}
+                    />
+                    <Button title="Save" onPress={handleSaveButtonPress} />
+                    <Button title="Cancle" onPress={handleModalClose} />
+                  </View>
+                </Modal>
+              )}
               <TouchableOpacity onPress={() => deleteTodo(key)}>
                 <Fontisto name="trash" size={18} color={theme.grey} />
               </TouchableOpacity>
